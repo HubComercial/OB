@@ -1,0 +1,190 @@
+{
+  "overview": {
+    "trades_today": 0,
+    "wins": 0,
+    "losses": 0,
+    "timeouts": 0,
+    "win_rate": 0,
+    "profit_factor": 0,
+    "drawdown": 0,
+    "net_profit": 0.0
+  },
+  "performance": {
+    "win_rate_by_asset": {
+      "EURGBP=X": 50.0,
+      "GBPUSD=X": 25.0,
+      "USDCAD=X": 75.0,
+      "AUDUSD=X": 50.0,
+      "USDJPY=X": 0.0,
+      "EURUSD=X": 100.0
+    },
+    "win_rate_by_hour": {
+      "10": 100.0,
+      "11": 66.66666666666666,
+      "12": 50.0,
+      "13": 14.285714285714285,
+      "14": 66.66666666666666,
+      "16": 0.0
+    },
+    "win_rate_by_weekday": [
+      0,
+      50.0,
+      66.66666666666666,
+      20.0,
+      0,
+      0,
+      0
+    ],
+    "daily_pnl": [
+      {
+        "date": "2026-07-21",
+        "pnl": -1.0
+      },
+      {
+        "date": "2026-07-22",
+        "pnl": 1.2
+      },
+      {
+        "date": "2026-07-23",
+        "pnl": -3.2
+      }
+    ]
+  },
+  "brain": {
+    "signals_generated": 0,
+    "signals_blocked": 0,
+    "avg_mq": 0,
+    "avg_adx": 0,
+    "avg_atr": 0,
+    "avg_confidence": 0
+  },
+  "filters": {
+    "mq": 0,
+    "adx": 0,
+    "bollinger": 0,
+    "score": 0
+  },
+  "accuracy": {
+    "<70": {
+      "trades": 0,
+      "wins": 0,
+      "win_rate": 0
+    },
+    "70-80": {
+      "trades": 15,
+      "wins": 9,
+      "win_rate": 60.0
+    },
+    "80-90": {
+      "trades": 6,
+      "wins": 1,
+      "win_rate": 16.7
+    },
+    "90-100": {
+      "trades": 0,
+      "wins": 0,
+      "win_rate": 0
+    }
+  },
+  "history": {
+    "last_30_days": 21,
+    "last_12_months": 21,
+    "best_day": {
+      "date": "",
+      "pnl": 0
+    },
+    "worst_day": {
+      "date": "",
+      "pnl": 0
+    },
+    "max_win_streak": 3,
+    "max_loss_streak": 4
+  },
+  "directions": {
+    "buy": 0,
+    "sell": 0
+  },
+  "avg_time_between_trades": 156.8,
+  "health": {
+    "cpu": 0,
+    "ram": 0,
+    "disk": 0,
+    "uptime": 0,
+    "reconnections": 0,
+    "timeouts": 0,
+    "yahoo_failures": 0,
+    "last_update": "2026-07-26 12:30:10"
+  },
+  "last_trades": [
+    {
+      "timestamp": "2026-07-23T14:25",
+      "asset": "EURGBP=X",
+      "direction": NaN,
+      "result": "LOSS",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-23T14:17",
+      "asset": "EURUSD=X",
+      "direction": NaN,
+      "result": "WIN",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-23T14:01",
+      "asset": "USDJPY=X",
+      "direction": NaN,
+      "result": "PENDENTE",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-23T13:50",
+      "asset": "AUDUSD=X",
+      "direction": NaN,
+      "result": "LOSS",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-23T13:42",
+      "asset": "USDJPY=X",
+      "direction": NaN,
+      "result": "LOSS",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-23T13:23",
+      "asset": "USDJPY=X",
+      "direction": NaN,
+      "result": "LOSS",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-22T14:12",
+      "asset": "AUDUSD=X",
+      "direction": NaN,
+      "result": "PENDENTE",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-22T14:00",
+      "asset": "AUDUSD=X",
+      "direction": NaN,
+      "result": "WIN",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-22T13:51",
+      "asset": "AUDUSD=X",
+      "direction": NaN,
+      "result": "LOSS",
+      "pnl": 0
+    },
+    {
+      "timestamp": "2026-07-22T13:36",
+      "asset": "USDCAD=X",
+      "direction": NaN,
+      "result": "WIN",
+      "pnl": 0
+    }
+  ]
+}
