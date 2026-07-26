@@ -7,313 +7,82 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        body {
-            background: #f1f5f9;
-            padding: 24px 20px;
-            color: #0f172a;
-        }
-
-        .container {
-            max-width: 1440px;
-            margin: 0 auto;
-        }
-
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 28px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .header h1 {
-            font-size: 1.9rem;
-            font-weight: 600;
-            letter-spacing: -0.4px;
-        }
-
-        .header h1 span {
-            color: #3b82f6;
-        }
-
-        .header .status-badge {
-            background: #dcfce7;
-            color: #166534;
-            padding: 6px 16px;
-            border-radius: 40px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .header .update-time {
-            font-size: 0.8rem;
-            color: #64748b;
-            background: #fff;
-            padding: 5px 16px;
-            border-radius: 40px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        }
-
-        /* Grids */
-        .grid-4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-bottom: 24px;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-            margin-bottom: 24px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-            margin-bottom: 24px;
-        }
-
-        .card {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 20px 22px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-            border: 1px solid #e2e8f0;
-            transition: box-shadow 0.2s;
-        }
-
-        .card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-        }
-
-        .card .label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #94a3b8;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-
-        .card .value {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #0f172a;
-            line-height: 1.2;
-        }
-
-        .card .sub {
-            font-size: 0.8rem;
-            color: #64748b;
-            margin-top: 4px;
-        }
-
-        .positive {
-            color: #10b981;
-        }
-        .negative {
-            color: #ef4444;
-        }
-        .neutral {
-            color: #f59e0b;
-        }
-
-        .chart-box {
-            background: #ffffff;
-            border-radius: 16px;
-            padding: 18px 20px 14px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-        }
-
-        .chart-box h3 {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: #334155;
-            margin-bottom: 12px;
-        }
-
-        .chart-box canvas {
-            width: 100% !important;
-            height: auto !important;
-            max-height: 180px;
-        }
-
-        /* Tabelas */
-        .table-wrap {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-        }
-
-        th {
-            text-align: left;
-            padding: 10px 8px 8px 0;
-            color: #64748b;
-            font-weight: 500;
-            border-bottom: 1px solid #e2e8f0;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
-        td {
-            padding: 10px 8px 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 2px 14px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            font-weight: 500;
-        }
-
-        .status-badge.win {
-            background: #dcfce7;
-            color: #166534;
-        }
-        .status-badge.loss {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        .status-badge.timeout {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        /* Health grid */
-        .health-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 10px;
-        }
-
-        .health-item {
-            text-align: center;
-            background: #f8fafc;
-            padding: 8px 4px;
-            border-radius: 10px;
-        }
-
-        .health-item .label {
-            font-size: 0.55rem;
-            text-transform: uppercase;
-            color: #94a3b8;
-        }
-
-        .health-item .val {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .health-item .val.green {
-            color: #10b981;
-        }
-        .health-item .val.yellow {
-            color: #f59e0b;
-        }
-        .health-item .val.red {
-            color: #ef4444;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            font-size: 0.7rem;
-            color: #94a3b8;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 20px;
-        }
-
-        @media (max-width: 1024px) {
-            .grid-4 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .grid-3 {
-                grid-template-columns: 1fr 1fr;
-            }
-            .health-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        @media (max-width: 700px) {
-            .grid-4,
-            .grid-3,
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-            .health-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: #f1f5f9; padding: 24px 20px; color: #0f172a; }
+        .container { max-width: 1440px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+        .header h1 { font-size: 1.9rem; font-weight: 600; }
+        .header h1 span { color: #3b82f6; }
+        .header .status-badge { background: #dcfce7; color: #166534; padding: 6px 16px; border-radius: 40px; font-size: 0.75rem; font-weight: 500; }
+        .header .update-time { font-size: 0.8rem; color: #64748b; background: #fff; padding: 5px 16px; border-radius: 40px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 24px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 24px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+        .card { background: #fff; border-radius: 16px; padding: 20px 22px; border: 1px solid #e2e8f0; }
+        .card .label { font-size: 0.7rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; margin-bottom: 6px; }
+        .card .value { font-size: 2rem; font-weight: 600; color: #0f172a; }
+        .card .sub { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #f59e0b; }
+        .chart-box { background: #fff; border-radius: 16px; padding: 18px 20px 14px; border: 1px solid #e2e8f0; }
+        .chart-box h3 { font-size: 0.85rem; font-weight: 500; color: #334155; margin-bottom: 12px; }
+        .chart-box canvas { width: 100% !important; height: auto !important; max-height: 180px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th { text-align: left; padding: 10px 8px 8px 0; color: #64748b; font-weight: 500; border-bottom: 1px solid #e2e8f0; font-size: 0.65rem; text-transform: uppercase; }
+        td { padding: 10px 8px 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .status-badge { display: inline-block; padding: 2px 14px; border-radius: 40px; font-size: 0.7rem; font-weight: 500; }
+        .status-badge.win { background: #dcfce7; color: #166534; }
+        .status-badge.loss { background: #fee2e2; color: #991b1b; }
+        .status-badge.timeout { background: #fef3c7; color: #92400e; }
+        .health-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+        .health-item { text-align: center; background: #f8fafc; padding: 8px 4px; border-radius: 10px; }
+        .health-item .label { font-size: 0.55rem; text-transform: uppercase; color: #94a3b8; }
+        .health-item .val { font-size: 1rem; font-weight: 600; }
+        .health-item .val.green { color: #10b981; }
+        .health-item .val.yellow { color: #f59e0b; }
+        .health-item .val.red { color: #ef4444; }
+        .footer { text-align: center; margin-top: 40px; font-size: 0.7rem; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+        @media (max-width: 1024px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: 1fr 1fr; } .health-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 700px) { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; } .health-grid { grid-template-columns: repeat(3, 1fr); } .header { flex-direction: column; align-items: flex-start; } }
     </style>
 </head>
 <body>
     <div class="container">
-
-        <!-- Header -->
         <div class="header">
             <div>
                 <h1>📊 Binary <span>Bot</span></h1>
-                <div style="font-size:0.85rem;color:#64748b;margin-top:2px;">Performance, saúde e métricas avançadas</div>
+                <div style="font-size:0.85rem;color:#64748b;">Performance, saúde e métricas avançadas</div>
             </div>
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;gap:10px;align-items:center;">
                 <span class="status-badge">🔴 AO VIVO</span>
                 <span class="update-time" id="lastUpdate">Carregando...</span>
             </div>
         </div>
 
-        <!-- Overview -->
         <div class="grid-4" id="overviewGrid"></div>
 
-        <!-- Performance Charts: Ativo, Hora, Dia da semana -->
         <div class="grid-3">
             <div class="chart-box"><h3>📈 Win Rate por Ativo</h3><canvas id="assetChart" height="150"></canvas></div>
             <div class="chart-box"><h3>🕒 Win Rate por Horário (UTC)</h3><canvas id="hourChart" height="150"></canvas></div>
             <div class="chart-box"><h3>📅 Win Rate por Dia da Semana</h3><canvas id="weekdayChart" height="150"></canvas></div>
         </div>
 
-        <!-- Daily P&L Evolution -->
         <div class="chart-box" style="margin-bottom:24px;">
             <h3>📉 Evolução Diária do Lucro (últimos 30 dias)</h3>
             <canvas id="dailyPnlChart" height="120"></canvas>
         </div>
 
-        <!-- Brain + Filters + Accuracy -->
         <div class="grid-3">
             <div class="chart-box"><h3>🧠 Brain – Sinais vs Bloqueios</h3><canvas id="brainChart" height="150"></canvas></div>
             <div class="chart-box"><h3>🚫 Filtros – Bloqueios por motivo</h3><canvas id="filterChart" height="150"></canvas></div>
             <div class="chart-box"><h3>🎯 Precisão por Confiança</h3><canvas id="accuracyChart" height="150"></canvas></div>
         </div>
 
-        <!-- Advanced Metrics: Direções, Timeframes, Correlações -->
         <div class="grid-2" style="margin-bottom:24px;">
             <div class="card">
                 <div class="label">🧭 Distribuição de Direções</div>
-                <div id="directionStats" style="display:flex;gap:30px;margin-top:6px;flex-wrap:wrap;">
+                <div id="directionStats" style="display:flex;gap:30px;margin-top:6px;">
                     <div><span style="font-weight:600;color:#3b82f6;">COMPRA</span> <span id="buyCount">0</span> (<span id="buyPct">0</span>%)</div>
                     <div><span style="font-weight:600;color:#f43f5e;">VENDA</span> <span id="sellCount">0</span> (<span id="sellPct">0</span>%)</div>
                 </div>
@@ -325,18 +94,15 @@
             </div>
         </div>
 
-        <!-- Health -->
         <div class="card" style="margin-bottom:24px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
                 <span class="label" style="font-size:0.75rem;">🖥️ Saúde do Robô</span>
-                <span style="font-size:0.7rem;color:#94a3b8;" id="healthTime"></span>
             </div>
             <div class="health-grid" id="healthGrid"></div>
         </div>
 
-        <!-- Last Trades -->
         <div class="card" style="margin-bottom:24px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
                 <span class="label" style="font-size:0.75rem;">📋 Últimos 10 trades</span>
             </div>
             <div class="table-wrap">
@@ -344,28 +110,13 @@
             </div>
         </div>
 
-        <!-- History Summary -->
         <div class="grid-3">
-            <div class="card">
-                <div class="label">📅 Últimos 30 dias</div>
-                <div class="value" id="hist30">0</div>
-                <div class="sub">trades confirmados</div>
-            </div>
-            <div class="card">
-                <div class="label">📅 Últimos 12 meses</div>
-                <div class="value" id="hist12">0</div>
-                <div class="sub">trades confirmados</div>
-            </div>
-            <div class="card">
-                <div class="label">🏆 Melhor / Pior dia</div>
-                <div class="value" id="bestDay" style="font-size:1.2rem;">--</div>
-                <div class="sub" id="worstDay">--</div>
-            </div>
+            <div class="card"><div class="label">📅 Últimos 30 dias</div><div class="value" id="hist30">0</div><div class="sub">trades confirmados</div></div>
+            <div class="card"><div class="label">📅 Últimos 12 meses</div><div class="value" id="hist12">0</div><div class="sub">trades confirmados</div></div>
+            <div class="card"><div class="label">🏆 Melhor / Pior dia</div><div class="value" id="bestDay" style="font-size:1.2rem;">--</div><div class="sub" id="worstDay">--</div></div>
         </div>
 
-        <div class="footer">
-            Dados atualizados a cada 15 minutos · <span id="updateTime"></span>
-        </div>
+        <div class="footer">Dados atualizados a cada 15 minutos · <span id="updateTime"></span></div>
     </div>
 
     <script>
@@ -374,7 +125,10 @@
 
         function loadData() {
             fetch(API + '?t=' + Date.now())
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
                 .then(data => {
                     if (!data || !data.health) return;
                     document.getElementById('lastUpdate').textContent = 'Última atualização: ' + data.health.last_update;
@@ -393,35 +147,19 @@
                     renderTrades(data);
                     renderHistory(data);
                 })
-                .catch(() => {
-                    document.getElementById('lastUpdate').textContent = '⚠️ Erro ao carregar';
+                .catch(err => {
+                    console.error('Erro ao carregar dados:', err);
+                    document.getElementById('lastUpdate').textContent = '⚠️ Erro ao carregar: ' + err.message;
                 });
         }
 
         function renderOverview(data) {
             const o = data.overview;
-            const grid = document.getElementById('overviewGrid');
-            grid.innerHTML = `
-                <div class="card">
-                    <div class="label">📊 Trades Hoje</div>
-                    <div class="value">${o.trades_today}</div>
-                    <div class="sub"><span class="positive">${o.wins} WIN</span> · <span class="negative">${o.losses} LOSS</span> · <span class="neutral">${o.timeouts} TIMEOUT</span></div>
-                </div>
-                <div class="card">
-                    <div class="label">🎯 Win Rate</div>
-                    <div class="value" style="color:${o.win_rate >= 50 ? '#10b981' : '#ef4444'}">${o.win_rate.toFixed(1)}%</div>
-                    <div class="sub">${o.wins} vitórias em ${o.wins+o.losses} confirmados</div>
-                </div>
-                <div class="card">
-                    <div class="label">📈 Profit Factor</div>
-                    <div class="value" style="color:${o.profit_factor >= 1.5 ? '#10b981' : '#f59e0b'}">${o.profit_factor.toFixed(2)}</div>
-                    <div class="sub">Lucro / Perda</div>
-                </div>
-                <div class="card">
-                    <div class="label">💰 Lucro Líquido</div>
-                    <div class="value" style="color:${o.net_profit >= 0 ? '#10b981' : '#ef4444'}">$${o.net_profit.toFixed(2)}</div>
-                    <div class="sub">Drawdown: $${o.drawdown.toFixed(2)}</div>
-                </div>
+            document.getElementById('overviewGrid').innerHTML = `
+                <div class="card"><div class="label">📊 Trades Hoje</div><div class="value">${o.trades_today}</div><div class="sub"><span class="positive">${o.wins} WIN</span> · <span class="negative">${o.losses} LOSS</span> · <span class="neutral">${o.timeouts} TIMEOUT</span></div></div>
+                <div class="card"><div class="label">🎯 Win Rate</div><div class="value" style="color:${o.win_rate >= 50 ? '#10b981' : '#ef4444'}">${o.win_rate.toFixed(1)}%</div><div class="sub">${o.wins} vitórias em ${o.wins+o.losses} confirmados</div></div>
+                <div class="card"><div class="label">📈 Profit Factor</div><div class="value" style="color:${o.profit_factor >= 1.5 ? '#10b981' : '#f59e0b'}">${o.profit_factor.toFixed(2)}</div><div class="sub">Lucro / Perda</div></div>
+                <div class="card"><div class="label">💰 Lucro Líquido</div><div class="value" style="color:${o.net_profit >= 0 ? '#10b981' : '#ef4444'}">$${o.net_profit.toFixed(2)}</div><div class="sub">Drawdown: $${o.drawdown.toFixed(2)}</div></div>
             `;
         }
 
@@ -431,10 +169,8 @@
             if (charts.asset) charts.asset.destroy();
             charts.asset = new Chart(document.getElementById('assetChart'), {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, backgroundColor: '#3b82f6',
-                        borderRadius: 4 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0,
-                            max: 100, grid: { color: '#f1f5f9' } } } }
+                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, grid: { color: '#f1f5f9' } } } }
             });
         }
 
@@ -444,23 +180,19 @@
             if (charts.hour) charts.hour.destroy();
             charts.hour = new Chart(document.getElementById('hourChart'), {
                 type: 'line',
-                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, borderColor: '#10b981',
-                        fill: false, tension: 0.2, pointRadius: 2 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0,
-                            max: 100, grid: { color: '#f1f5f9' } } } }
+                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, borderColor: '#10b981', fill: false, tension: 0.2 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, grid: { color: '#f1f5f9' } } } }
             });
         }
 
         function renderWeekdayChart(data) {
             const labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-            const values = data.performance.win_rate_by_weekday || [0, 0, 0, 0, 0, 0, 0];
+            const values = data.performance.win_rate_by_weekday || [0,0,0,0,0,0,0];
             if (charts.weekday) charts.weekday.destroy();
             charts.weekday = new Chart(document.getElementById('weekdayChart'), {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, backgroundColor: '#8b5cf6',
-                        borderRadius: 4 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0,
-                            max: 100, grid: { color: '#f1f5f9' } } } }
+                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, backgroundColor: '#8b5cf6', borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, grid: { color: '#f1f5f9' } } } }
             });
         }
 
@@ -471,8 +203,7 @@
             if (charts.dailyPnl) charts.dailyPnl.destroy();
             charts.dailyPnl = new Chart(document.getElementById('dailyPnlChart'), {
                 type: 'line',
-                data: { labels, datasets: [{ label: 'P&L ($)', data: values, borderColor: '#f59e0b',
-                        fill: true, backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.2 }] },
+                data: { labels, datasets: [{ label: 'P&L ($)', data: values, borderColor: '#f59e0b', fill: true, backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.2 }] },
                 options: { responsive: true, plugins: { legend: { display: false } } }
             });
         }
@@ -483,8 +214,7 @@
             if (charts.brain) charts.brain.destroy();
             charts.brain = new Chart(document.getElementById('brainChart'), {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'Quantidade', data: values, backgroundColor: ['#3b82f6',
-                            '#f43f5e'], borderRadius: 4 }] },
+                data: { labels, datasets: [{ label: 'Quantidade', data: values, backgroundColor: ['#3b82f6', '#f43f5e'], borderRadius: 4 }] },
                 options: { responsive: true, plugins: { legend: { display: false } } }
             });
         }
@@ -495,8 +225,7 @@
             if (charts.filter) charts.filter.destroy();
             charts.filter = new Chart(document.getElementById('filterChart'), {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'Bloqueios', data: values, backgroundColor: '#f59e0b',
-                        borderRadius: 4 }] },
+                data: { labels, datasets: [{ label: 'Bloqueios', data: values, backgroundColor: '#f59e0b', borderRadius: 4 }] },
                 options: { responsive: true, plugins: { legend: { display: false } } }
             });
         }
@@ -507,10 +236,8 @@
             if (charts.accuracy) charts.accuracy.destroy();
             charts.accuracy = new Chart(document.getElementById('accuracyChart'), {
                 type: 'bar',
-                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, backgroundColor: '#8b5cf6',
-                        borderRadius: 4 }] },
-                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0,
-                            max: 100, grid: { color: '#f1f5f9' } } } }
+                data: { labels, datasets: [{ label: 'Win Rate (%)', data: values, backgroundColor: '#8b5cf6', borderRadius: 4 }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, grid: { color: '#f1f5f9' } } } }
             });
         }
 
@@ -544,19 +271,18 @@
         function renderTrades(data) {
             const tbody = document.getElementById('tradesTable');
             if (!data.last_trades || data.last_trades.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;">Sem trades recentes.</td></tr>';
+                tbody.innerHTML = '<tr><td style="color:#94a3b8;">Sem trades recentes.</td></tr>';
                 return;
             }
             let html = '<tr><th>Hora</th><th>Ativo</th><th>Direção</th><th>Resultado</th><th>P&L</th></tr>';
             data.last_trades.forEach(t => {
                 const cls = t.result === 'WIN' ? 'win' : t.result === 'LOSS' ? 'loss' : 'timeout';
-                const pnlClass = t.pnl >= 0 ? 'positive' : 'negative';
                 html += `<tr>
                     <td>${t.timestamp}</td>
                     <td>${t.asset}</td>
                     <td>${t.direction}</td>
                     <td><span class="status-badge ${cls}">${t.result}</span></td>
-                    <td class="${pnlClass}">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}</td>
+                    <td class="${t.pnl >= 0 ? 'positive' : 'negative'}">${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}</td>
                 </tr>`;
             });
             tbody.innerHTML = html;
