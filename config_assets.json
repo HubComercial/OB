@@ -1,0 +1,58 @@
+{
+  "EURUSD=X": {
+    "atr_min": 0.00005,
+    "adx_min": 25,
+    "bollinger_width_min": 0.0001,
+    "mq_min": 35,
+    "score_min": 70
+  },
+  "GBPUSD=X": {
+    "atr_min": 0.00005,
+    "adx_min": 25,
+    "bollinger_width_min": 0.0001,
+    "mq_min": 35,
+    "score_min": 70
+  },
+  "USDJPY=X": {
+    "atr_min": 0.002,
+    "adx_min": 30,
+    "bollinger_width_min": 0.00005,
+    "mq_min": 30,
+    "score_min": 75
+  },
+  "AUDUSD=X": {
+    "atr_min": 0.00005,
+    "adx_min": 25,
+    "bollinger_width_min": 0.0001,
+    "mq_min": 35,
+    "score_min": 70
+  },
+  "USDCAD=X": {
+    "atr_min": 0.00005,
+    "adx_min": 25,
+    "bollinger_width_min": 0.0001,
+    "mq_min": 35,
+    "score_min": 70
+  },
+  "NZDUSD=X": {
+    "atr_min": 0.00005,
+    "adx_min": 25,
+    "bollinger_width_min": 0.0001,
+    "mq_min": 35,
+    "score_min": 70
+  },
+  "EURGBP=X": {
+    "atr_min": 0.00005,
+    "adx_min": 25,
+    "bollinger_width_min": 0.0001,
+    "mq_min": 35,
+    "score_min": 70
+  },
+  "EURJPY=X": {
+    "atr_min": 0.002,
+    "adx_min": 30,
+    "bollinger_width_min": 0.00005,
+    "mq_min": 30,
+    "score_min": 75
+  }
+}

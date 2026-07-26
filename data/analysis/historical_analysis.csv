@@ -1,0 +1,1 @@
+timestamp,asset,timeframe,open,high,low,close,volume,ema_fast,ema_trend,rsi,macd,cci,atr,adx,bollinger_width,market_quality,score_buy,score_sell,max_score_buy,max_score_sell,confidence,signal,filters_blocked,filters_detailed,resultado

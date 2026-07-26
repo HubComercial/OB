@@ -1,0 +1,180 @@
+import pandas as pd
+import yfinance as yf
+from datetime import datetime, timedelta
+import time
+import logging
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+class FeedbackRecorder:
+    def __init__(self, csv_path='data/feedback.csv'):
+        self.csv_path = csv_path
+        self.df = None
+        self._load()
+
+    def _load(self):
+        try:
+            self.df = pd.read_csv(self.csv_path)
+        except FileNotFoundError:
+            self.df = pd.DataFrame(columns=[
+                'timestamp', 'asset', 'timeframe', 'direction',
+                'entry_price', 'exit_price', 'result', 'score_buy',
+                'score_sell', 'mq', 'atr', 'bollinger_width', 'adx'
+            ])
+
+    def _save(self):
+        self.df.to_csv(self.csv_path, index=False)
+
+    def add_signal(self, asset=None, direction=None, score_buy=0.0, score_sell=0.0,
+                   mq=0.0, atr=0.0, bollinger_width=0.0, adx=0.0,
+                   entry_price=None, timestamp=None, timeframe=5,
+                   price=None, time=None, volume_ratio=0.0, **kwargs):
+        """
+        Adiciona um sinal pendente.
+        Aceita 'price' como alias de 'entry_price' e 'time' como alias de 'timestamp'.
+        Se timestamp for None, usa o timestamp atual.
+        """
+        # Usar price se entry_price não for fornecido
+        if entry_price is None and price is not None:
+            entry_price = price
+        if timestamp is None and time is not None:
+            timestamp = time
+
+        # Se ainda assim timestamp for None, usa o timestamp atual
+        if timestamp is None:
+            timestamp = int(time.time())
+            logging.warning(f"timestamp não fornecido. A usar timestamp atual: {timestamp}")
+
+        # Se ainda assim faltar algum essencial, log e retorna
+        if asset is None or direction is None or entry_price is None:
+            logging.error(f"Faltam parâmetros essenciais: asset={asset}, direction={direction}, entry_price={entry_price}, timestamp={timestamp}")
+            return
+
+        novo = pd.DataFrame([{
+            'timestamp': timestamp,
+            'asset': asset,
+            'timeframe': timeframe,
+            'direction': direction,
+            'entry_price': entry_price,
+            'exit_price': None,
+            'result': 'PENDENTE',
+            'score_buy': score_buy,
+            'score_sell': score_sell,
+            'mq': mq,
+            'atr': atr,
+            'bollinger_width': bollinger_width,
+            'adx': adx
+        }])
+        self.df = pd.concat([self.df, novo], ignore_index=True)
+        self._save()
+
+    def confirm_last_signal(self, result):
+        """
+        Atualiza o último sinal pendente com o resultado (WIN ou LOSS).
+        """
+        if self.df.empty:
+            logging.warning("Nenhum sinal para confirmar.")
+            return
+        # Encontrar o último registo com result='PENDENTE'
+        pendentes = self.df[self.df['result'] == 'PENDENTE']
+        if pendentes.empty:
+            logging.warning("Nenhum sinal pendente para confirmar.")
+            return
+        idx = pendentes.index[-1]
+        self.df.loc[idx, 'result'] = result
+        # Se exit_price for None, manter como None (será preenchido pelo confirmar_trade)
+        self._save()
+
+    def confirmar_trade(self, asset, direction, entry_price, timestamp,
+                         timeframe_min=5, timeout_min=6):
+        """
+        Confirma um trade usando IQ Option como fonte primária.
+        Se falhar, usa yfinance como fallback.
+        Atualiza o sinal pendente com o resultado e preço de saída.
+        """
+        yf_asset = asset.replace('=', '').replace('X', '')
+        if yf_asset.endswith('=X'):
+            yf_asset = yf_asset[:-2]
+
+        # 1. Tentar via IQ Option
+        try:
+            from modules.connector import get_iq_option
+            iq = get_iq_option()
+            if iq is not None:
+                candles = iq.get_candles(asset, timeframe_min, 2)
+                if candles and len(candles) >= 2:
+                    exit_price = candles[1]['close']
+                    if direction == 'COMPRA':
+                        result = 'WIN' if exit_price > entry_price else 'LOSS'
+                    else:
+                        result = 'WIN' if exit_price < entry_price else 'LOSS'
+                    self._registrar(asset, timestamp, timeframe_min, direction,
+                                   entry_price, exit_price, result)
+                    return result, exit_price
+        except Exception as e:
+            logging.warning(f"IQ Option falhou: {e}. A usar fallback yfinance.")
+
+        # 2. Fallback: yfinance
+        try:
+            entry_dt = datetime.fromtimestamp(timestamp)
+            start_dt = entry_dt + timedelta(minutes=timeframe_min)
+            end_dt = start_dt + timedelta(minutes=timeframe_min)
+
+            data = yf.download(yf_asset, start=start_dt, end=end_dt, interval=f'{timeframe_min}m', progress=False)
+            if not data.empty:
+                exit_price = data['Close'].iloc[-1]
+                if direction == 'COMPRA':
+                    result = 'WIN' if exit_price > entry_price else 'LOSS'
+                else:
+                    result = 'WIN' if exit_price < entry_price else 'LOSS'
+                self._registrar(asset, timestamp, timeframe_min, direction,
+                               entry_price, exit_price, result)
+                return result, exit_price
+            else:
+                logging.error(f"yfinance não retornou dados para {yf_asset} no período.")
+        except Exception as e:
+            logging.error(f"Fallback yfinance também falhou: {e}")
+
+        # Se tudo falhar, LOSS por segurança
+        logging.warning("Confirmação impossível. Registando como LOSS.")
+        result = 'LOSS'
+        exit_price = entry_price
+        self._registrar(asset, timestamp, timeframe_min, direction,
+                       entry_price, exit_price, result)
+        return result, exit_price
+
+    def _registrar(self, asset, timestamp, timeframe, direction,
+                   entry_price, exit_price, result):
+        # Atualiza o sinal pendente com o resultado e preço de saída
+        pendentes = self.df[self.df['result'] == 'PENDENTE']
+        if not pendentes.empty:
+            idx = pendentes.index[-1]
+            # Verificar se o timestamp e asset coincidem (opcional)
+            self.df.loc[idx, 'exit_price'] = exit_price
+            self.df.loc[idx, 'result'] = result
+        else:
+            # Se não houver pendente, adiciona novo registo
+            novo = pd.DataFrame([{
+                'timestamp': timestamp,
+                'asset': asset,
+                'timeframe': timeframe,
+                'direction': direction,
+                'entry_price': entry_price,
+                'exit_price': exit_price,
+                'result': result,
+                'score_buy': 0,
+                'score_sell': 0,
+                'mq': 0,
+                'atr': 0,
+                'bollinger_width': 0,
+                'adx': 0
+            }])
+            self.df = pd.concat([self.df, novo], ignore_index=True)
+        self._save()
+
+    def ultimo_trade(self):
+        if self.df.empty:
+            return None
+        return self.df.iloc[-1].to_dict()

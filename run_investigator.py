@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from modules.investigator import generate_report
+
+if __name__ == "__main__":
+    generate_report()

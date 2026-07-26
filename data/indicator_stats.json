@@ -1,0 +1,77 @@
+{
+  "volume::sell": {
+    "wins": 5,
+    "losses": 4,
+    "total": 9
+  },
+  "bollinger::sell": {
+    "wins": 4,
+    "losses": 4,
+    "total": 8
+  },
+  "sr::sell": {
+    "wins": 5,
+    "losses": 4,
+    "total": 9
+  },
+  "ema_trend::sell": {
+    "wins": 1,
+    "losses": 0,
+    "total": 1
+  },
+  "rsi::sell": {
+    "wins": 1,
+    "losses": 1,
+    "total": 2
+  },
+  "volume::buy": {
+    "wins": 4,
+    "losses": 6,
+    "total": 10
+  },
+  "bollinger::buy": {
+    "wins": 4,
+    "losses": 6,
+    "total": 10
+  },
+  "sr::buy": {
+    "wins": 4,
+    "losses": 6,
+    "total": 10
+  },
+  "ema_fast::buy": {
+    "wins": 0,
+    "losses": 2,
+    "total": 2
+  },
+  "ema_trend::buy": {
+    "wins": 0,
+    "losses": 2,
+    "total": 2
+  },
+  "macd::buy": {
+    "wins": 0,
+    "losses": 2,
+    "total": 2
+  },
+  "cci::buy": {
+    "wins": 0,
+    "losses": 2,
+    "total": 2
+  },
+  "ema_fast::sell": {
+    "wins": 0,
+    "losses": 1,
+    "total": 1
+  },
+  "macd::sell": {
+    "wins": 0,
+    "losses": 1,
+    "total": 1
+  },
+  "cci::sell": {
+    "wins": 0,
+    "losses": 1,
+    "total": 1
+  }
+}

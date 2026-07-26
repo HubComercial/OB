@@ -1,0 +1,122 @@
+import pandas as pd
+import os
+import json
+from datetime import datetime
+
+class FeedbackRecorder:
+    def __init__(self, filename="data/feedback.csv"):
+        self.filename = filename
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        self._migrate_columns()
+
+    def _migrate_columns(self):
+        if not os.path.isfile(self.filename):
+            df = pd.DataFrame(columns=[
+                "timestamp", "ativo", "direcao", "preco",
+                "score_buy", "score_sell", "market_quality",
+                "reasons_buy", "reasons_sell",
+                "resultado", "lucro", "confirmado",
+                "timeframe", "atr", "bollinger_width",
+                "distancia_ema", "horario", "dia_semana", "mercado",
+                "trend_direction", "close", "ema_fast", "ema_trend",
+                "rsi", "macd", "cci", "adx", "volume_ratio"
+            ])
+            df['confirmado'] = df['confirmado'].astype(str)
+            df.to_csv(self.filename, index=False)
+            return
+
+        df = pd.read_csv(self.filename)
+        novas_colunas = [
+            "timeframe", "atr", "bollinger_width", "distancia_ema",
+            "horario", "dia_semana", "mercado", "trend_direction",
+            "close", "ema_fast", "ema_trend", "rsi", "macd", "cci",
+            "adx", "volume_ratio"
+        ]
+        for col in novas_colunas:
+            if col not in df.columns:
+                df[col] = None
+        df.to_csv(self.filename, index=False)
+
+    def add_signal(self, asset, direction, price, score_buy=0, score_sell=0, market_quality=0,
+                   reasons_buy=None, reasons_sell=None,
+                   timeframe=0, atr=0.0, bollinger_width=0.0,
+                   distancia_ema=0.0, mercado="", trend_direction="",
+                   close=0.0, ema_fast=0.0, ema_trend=0.0,
+                   rsi=0.0, macd=0.0, cci=0.0, adx=0.0, volume_ratio=0.0):
+        reasons_buy_str = json.dumps(reasons_buy) if reasons_buy else "[]"
+        reasons_sell_str = json.dumps(reasons_sell) if reasons_sell else "[]"
+
+        now = datetime.now()
+        data = {
+            "timestamp": now.isoformat(),
+            "ativo": asset,
+            "direcao": direction,
+            "preco": price,
+            "score_buy": score_buy,
+            "score_sell": score_sell,
+            "market_quality": market_quality,
+            "reasons_buy": reasons_buy_str,
+            "reasons_sell": reasons_sell_str,
+            "resultado": "PENDENTE",
+            "lucro": 0.0,
+            "confirmado": "False",
+            "timeframe": timeframe,
+            "atr": round(atr, 6),
+            "bollinger_width": round(bollinger_width, 6),
+            "distancia_ema": round(distancia_ema, 6),
+            "horario": now.hour,
+            "dia_semana": now.weekday(),
+            "mercado": mercado,
+            "trend_direction": trend_direction,
+            "close": round(close, 6),
+            "ema_fast": round(ema_fast, 6),
+            "ema_trend": round(ema_trend, 6),
+            "rsi": round(rsi, 2),
+            "macd": round(macd, 6),
+            "cci": round(cci, 2),
+            "adx": round(adx, 2),
+            "volume_ratio": round(volume_ratio, 2)
+        }
+        df = pd.read_csv(self.filename)
+        df['confirmado'] = df['confirmado'].astype(str)
+        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+        df['confirmado'] = df['confirmado'].astype(str)
+        df.to_csv(self.filename, index=False)
+
+    def confirm_signal(self, direction, asset, result, profit):
+        df = pd.read_csv(self.filename)
+        df['confirmado'] = df['confirmado'].astype(str)
+        mask = (df['confirmado'] == "False") & (df['ativo'] == asset) & (df['direcao'] == direction)
+        if not mask.any():
+            print("⚠️ Nenhum sinal pendente para confirmação.")
+            return
+        idx = df[mask].index[-1]
+        df.loc[idx, 'resultado'] = "WIN" if result else "LOSS"
+        df.loc[idx, 'lucro'] = profit
+        df.loc[idx, 'confirmado'] = "True"
+        df.to_csv(self.filename, index=False)
+        print(f"✅ Sinal {direction} em {asset} confirmado como {'GANHO' if result else 'PERDA'}")
+
+    def confirm_last_signal(self, result):
+        df = pd.read_csv(self.filename)
+        df['confirmado'] = df['confirmado'].astype(str)
+        mask = df['confirmado'] == "False"
+        if not mask.any():
+            print("⚠️ Nenhum sinal pendente.")
+            return
+        idx = df[mask].index[-1]
+        df.loc[idx, 'resultado'] = result
+        df.loc[idx, 'confirmado'] = "True"
+        df.loc[idx, 'lucro'] = 1.0 if result == "WIN" else -1.0
+        df.to_csv(self.filename, index=False)
+        print(f"✅ Último sinal confirmado como {result}")
+
+    def get_pending_signals(self):
+        df = pd.read_csv(self.filename)
+        df['confirmado'] = df['confirmado'].astype(str)
+        return df[df['confirmado'] == "False"]
+
+    def get_signals_for_learning(self):
+        df = pd.read_csv(self.filename)
+        df['confirmado'] = df['confirmado'].astype(str)
+        return df[df['confirmado'] == "True"]

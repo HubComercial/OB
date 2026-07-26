@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "updated_at": "2026-07-23T13:01:16.014241+00:00",
+  "buy": {
+    "ema_fast": 15,
+    "ema_trend": 15,
+    "macd": 15,
+    "cci": 15,
+    "rsi": 10,
+    "volume": 10.3,
+    "bollinger": 10.3,
+    "sr": 5.8
+  },
+  "sell": {
+    "ema_fast": 15,
+    "ema_trend": 15,
+    "macd": 15,
+    "cci": 15,
+    "rsi": 10,
+    "volume": 10.61111111111111,
+    "bollinger": 10.5,
+    "sr": 6.111111111111111
+  }
+}

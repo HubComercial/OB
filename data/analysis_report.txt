@@ -1,0 +1,32 @@
+============================================================
+📊 RELATÓRIO DE ANÁLISE DE TRADES
+============================================================
+Total de trades: 51
+Win Rate: 41.18%
+Wins: 21, Losses: 30
+
+📌 Market Quality (win rate por grupo):
+   <30: 100.0%
+   50-69: 44.0%
+   70+: 36.0%
+
+📌 Ativos (win rate):
+   EURUSD-OTC: 45.5%
+   EURUSD=X: 18.2%
+   GBPUSD-OTC: 45.5%
+   GBPUSD=X: 47.1%
+   TESTE3: 100.0%
+
+📌 Indicadores mais frequentes em WINs:
+   Volume OK: 40
+   Perto do suporte: 19
+   Perto da resistência: 18
+   Bollinger inferior (suporte): 14
+   RSI favorável (tendência baixa): 13
+
+📌 Indicadores mais frequentes em LOSSs:
+   Volume OK: 60
+   Perto do suporte: 29
+   Perto da resistência: 29
+   Bollinger inferior (suporte): 19
+   MACD bullish: 17

@@ -1,0 +1,50 @@
+{
+  "2026-07-22": {
+    "ativos_analisados": 360,
+    "rejeicoes": {
+      "MQ": 297
+    },
+    "ranking": 0,
+    "executado": 0,
+    "reconexoes": 0,
+    "erros": 0,
+    "ciclos": 29
+  },
+  "2026-07-23": {
+    "ativos_analisados": 1328,
+    "rejeicoes": {
+      "MQ": 766,
+      "ADX": 136
+    },
+    "ranking": 10,
+    "executado": 10,
+    "reconexoes": 0,
+    "erros": 0,
+    "ciclos": 165
+  },
+  "2026-07-24": {
+    "ativos_analisados": 1072,
+    "rejeicoes": {
+      "ADX": 146,
+      "MQ": 443,
+      "Score": 4
+    },
+    "ranking": 48,
+    "executado": 13,
+    "reconexoes": 0,
+    "erros": 0,
+    "ciclos": 141
+  },
+  "2026-07-25": {
+    "ativos_analisados": 88,
+    "rejeicoes": {
+      "MQ": 55,
+      "ADX": 22
+    },
+    "ranking": 0,
+    "executado": 0,
+    "reconexoes": 0,
+    "erros": 0,
+    "ciclos": 11
+  }
+}

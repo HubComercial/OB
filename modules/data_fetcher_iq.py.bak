@@ -1,0 +1,96 @@
+import pandas as pd
+import time
+import json
+from iqoptionapi.stable_api import IQ_Option
+from config import IQ_EMAIL, IQ_PASSWORD
+
+class DataFetcherIQ:
+    def __init__(self, asset="EURUSD", timeframe=1):
+        self.asset = asset
+        self.timeframe = timeframe
+        self.api = None
+        self.connect()
+
+    def connect(self, max_retries=5):
+        for attempt in range(max_retries):
+            try:
+                print(f"🔑 Conectando à IQ Option... (tentativa {attempt+1}/{max_retries})")
+                self.api = IQ_Option(IQ_EMAIL, IQ_PASSWORD)
+                check, reason = self.api.connect()
+                if check:
+                    print("✅ Conectado!")
+                    try:
+                        self.api.change_balance("PRACTICE")
+                        print("📊 Modo DEMO")
+                    except:
+                        pass
+                    return True
+                else:
+                    print(f"❌ Erro: {reason}")
+                    time.sleep(5)
+            except Exception as e:
+                print(f"❌ Erro na conexão: {e}")
+                time.sleep(5)
+        print("❌ Falha ao conectar após múltiplas tentativas.")
+        return False
+
+    def get_historical_data(self, count=100, max_retries=5):
+        for attempt in range(max_retries):
+            try:
+                if self.api is None:
+                    if not self.connect():
+                        time.sleep(5)
+                        continue
+
+                candles = self.api.get_candles(self.asset, self.timeframe, count, time.time())
+                if not candles:
+                    print("⚠️ Nenhum candle retornado. Reconectando...")
+                    self.connect()
+                    time.sleep(3)
+                    continue
+
+                df = pd.DataFrame(candles)
+
+                rename_map = {}
+                for col in df.columns:
+                    col_lower = col.lower()
+                    if col_lower == 'open':
+                        rename_map[col] = 'open'
+                    elif col_lower == 'close':
+                        rename_map[col] = 'close'
+                    elif col_lower == 'max':
+                        rename_map[col] = 'high'
+                    elif col_lower == 'min':
+                        rename_map[col] = 'low'
+                    elif 'from' in col_lower or 'time' in col_lower:
+                        rename_map[col] = 'timestamp'
+
+                df.rename(columns=rename_map, inplace=True)
+
+                if 'timestamp' in df.columns:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+
+                required = ['timestamp', 'open', 'high', 'low', 'close']
+                for r in required:
+                    if r not in df.columns:
+                        print(f"⚠️ Coluna '{r}' não encontrada.")
+                        self.connect()
+                        time.sleep(3)
+                        continue
+
+                df = df.reset_index(drop=True)
+                return df[required]
+
+            except json.JSONDecodeError:
+                print("❌ Erro ao decodificar JSON. Reconectando...")
+                self.connect()
+                time.sleep(5)
+                continue
+            except Exception as e:
+                print(f"❌ Erro ao buscar dados: {e}")
+                self.connect()
+                time.sleep(5)
+                continue
+
+        print("❌ Falha após múltiplas tentativas.")
+        return None

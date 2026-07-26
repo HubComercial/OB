@@ -1,0 +1,13 @@
+{
+    "confidence": 1.0,
+    "market_quality": 1.0,
+    "score_buy": 1.0,
+    "score_sell": 1.0,
+    "adx": 1.0,
+    "rsi": 1.0,
+    "macd": 1.0,
+    "cci": 1.0,
+    "atr": 1.0,
+    "bollinger_width": 1.0,
+    "volume_ratio": 1.0
+}

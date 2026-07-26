@@ -1,0 +1,480 @@
+#!/usr/bin/env python3
+import time
+import random
+import logging
+from datetime import datetime, timezone, timedelta
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+
+logging.getLogger("iqoptionapi").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+from modules.data_fetcher_hybrid import DataFetcherHybrid as DataFetcher
+from modules.strategy import generate_signal
+from modules.risk_manager import RiskManager
+from modules.trade_recorder import TradeRecorder
+from modules.notifier import TelegramNotifier
+from modules.feedback import FeedbackRecorder
+from modules.learner import optimize_parameters
+from modules.otc_switcher import should_use_backtest
+from modules.alert_manager import AlertManagerMulti
+from modules.market_analyzer import MarketAnalyzer
+from modules.signal_ranker import rank_signals
+from modules.telemetry import Telemetry
+
+from config import (
+    ASSETS, TIMEFRAMES, AMOUNT, MIN_INTERVAL,
+    DAILY_LOSS_LIMIT, MAX_CONSECUTIVE_LOSSES,
+    TELEGRAM_TOKEN, TELEGRAM_CHAT_ID,
+    OVERLAY_START, OVERLAY_END,
+    POLLING_OVERLAY, POLLING_OFF,
+    END_OF_DAY_HOUR,
+    CONFIRM_EXPIRY_MAP,
+    MARKET_QUALITY_MIN
+)
+
+feedback = FeedbackRecorder()
+notifier = TelegramNotifier(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID) if TELEGRAM_TOKEN else None
+telemetry = Telemetry()
+brain = Brain()
+learning_engine = LearningEngine()
+
+print("ℹ️ Modo Telegram: apenas envio de mensagens (sem polling).")
+
+def print_performance(recorder):
+    summary = recorder.get_performance_summary()
+    if summary is None:
+        return
+    print("\n" + "=" * 50)
+    print("📊 PAINEL DE PERFORMANCE")
+    print("=" * 50)
+    print(f"📈 Total de Trades: {summary['total_trades']}")
+    print(f"✅ VITÓRIAS: {summary['wins']}")
+    print(f"❌ DERROTAS: {summary['losses']}")
+    print(f"🎯 Taxa de Acerto: {summary['win_rate']:.2f}%")
+    print(f"💰 Lucro Líquido: ${summary['net_profit']:.2f}")
+    print(f"📊 Fator de Lucro: {summary['profit_factor']:.2f}")
+    print(f"📉 Drawdown Máximo: ${summary['max_drawdown']:.2f}")
+    print("=" * 50 + "\n")
+
+def send_telegram_alert(signal, asset, amount, timeframe, confidence=0, market_quality=0):
+    if notifier is None:
+        return
+    try:
+        now = datetime.now(timezone.utc).strftime("%H:%M:%S")
+        expiry = CONFIRM_EXPIRY_MAP.get(timeframe, 2)
+        msg = (
+            f"🚨 <b>SINAL DE {signal}</b>\n"
+            f"📈 Ativo: {asset}\n"
+            f"⏱️  Timeframe: {timeframe}m\n"
+            f"💰 Valor: ${amount:.2f}\n"
+            f"🎯 Confiança: {confidence:.2f}%\n"
+            f"📊 Market Quality: {market_quality}\n"
+            f"⏰ Horário: {now} UTC\n"
+            f"💡 Ação: Abra a Pocket Option e execute {signal}.\n"
+            f"⏳ Confirmação automática em {expiry} minuto(s)."
+        )
+        notifier.send_message(msg)
+    except Exception as e:
+        print(f"⚠️ Erro ao enviar Telegram: {e}")
+
+def send_telegram_performance(recorder):
+    if notifier is None:
+        return
+    summary = recorder.get_performance_summary()
+    if summary is None or summary['total_trades'] == 0:
+        return
+    notifier.send_performance_report(summary)
+
+def is_overlay():
+    now = datetime.now(timezone.utc)
+    hora = now.hour
+    return OVERLAY_START <= hora < OVERLAY_END
+
+def safe_sleep(seconds, check_interval=1):
+    elapsed = 0
+    while elapsed < seconds:
+        time.sleep(check_interval)
+        elapsed += check_interval
+        if not is_overlay() and seconds > 30:
+            break
+
+def sleep_until(target_hour, target_minute=0, target_second=0):
+    now = datetime.now(timezone.utc)
+    target = now.replace(hour=target_hour, minute=target_minute, second=target_second, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    seconds_to_sleep = (target - now).total_seconds()
+    print(f"⏰ A dormir até {target.strftime('%H:%M:%S')} UTC ({seconds_to_sleep:.0f}s)...")
+    safe_sleep(seconds_to_sleep)
+
+def check_and_execute_pending_tasks(analyzer):
+    try:
+        with open("data/last_analysis.txt", "r") as f:
+            last_date = f.read().strip()
+    except:
+        last_date = ""
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")
+    current_hour = now.hour
+    if current_hour >= END_OF_DAY_HOUR and last_date != today:
+        print("📊 A executar análise de fim de dia...")
+        analyzer.send_daily_report()
+        with open("data/last_analysis.txt", "w") as f:
+            f.write(today)
+        return True
+    return False
+
+def confirm_signal(asset, signal, entry_price, direction, entry_time, expiry_minutes):
+    timeout_sleep = 600
+    timeout_network = 30
+
+    print(f"⏳ A aguardar {expiry_minutes} min para confirmar {signal} em {asset}...")
+
+    start_time = time.time()
+    while True:
+        if time.time() - start_time >= expiry_minutes * 60:
+            break
+        time.sleep(1)
+        if time.time() - start_time > timeout_sleep:
+            print(f"⚠️ Timeout (sleep): {signal} em {asset} não confirmado. Registando como LOSS.")
+            return False, entry_price
+
+    time.sleep(5)
+
+    def fetch_data():
+        fetcher = DataFetcher(asset=asset, timeframe=1)
+        return fetcher.get_historical_data(count=5)
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(fetch_data)
+            df = future.result(timeout=timeout_network)
+
+        if df is None or len(df) < 2:
+            print(f"⚠️ Dados insuficientes para confirmar {asset}. Registando como LOSS.")
+            return False, entry_price
+
+        current_close = df['close'].iloc[-1]
+
+        if direction == "COMPRA":
+            result = current_close > entry_price
+        else:
+            result = current_close < entry_price
+
+        print(f"📊 {signal} em {asset}: entrada {entry_price:.5f} → saída {current_close:.5f} → {'WIN' if result else 'LOSS'}")
+        return result, current_close
+
+    except FutureTimeoutError:
+        print(f"⏰ Timeout de rede ({timeout_network}s) para {asset}. Registando como LOSS.")
+        return False, entry_price
+    except Exception as e:
+        print(f"❌ Erro na confirmação de {asset}: {e}. Registando como LOSS.")
+        return False, entry_price
+
+def main():
+    if should_use_backtest():
+        from modules.backtester import Backtester
+        print("🧠 Modo BACKTEST ativado (fim de semana).")
+        backtester = Backtester()
+        backtester.run()
+        return
+
+    print("=" * 60)
+    print("🚀 ROBÔ COM SCORE, APRENDIZADO E RANKING")
+    print(f"📈 Ativos monitorados: {len(ASSETS)} pares")
+    print(f"⏱️  Timeframes: {TIMEFRAMES} minutos")
+    print(f"💰 Valor por trade: ${AMOUNT}")
+    print(f"⏰ Overlay: {OVERLAY_START}h-{OVERLAY_END}h UTC")
+    conf_text = ", ".join([f"{tf}m={CONFIRM_EXPIRY_MAP.get(tf, 2)}min" for tf in TIMEFRAMES])
+    print(f"⏳ Confirmação automática: {conf_text}")
+    print(f"⏱️  Timeout confirmação: 10min (sleep) + 30s (rede)")
+    print(f"📊 Market Quality mínimo: {MARKET_QUALITY_MIN}")
+    print("=" * 60)
+
+    new_params = optimize_parameters()
+    if new_params:
+        print("📈 Parâmetros otimizados:", new_params)
+        if notifier:
+            notifier.send_message(f"🧠 <b>Parâmetros otimizados</b>\n{new_params}")
+
+    risk_manager = RiskManager(DAILY_LOSS_LIMIT, MAX_CONSECUTIVE_LOSSES)
+    recorder = TradeRecorder()
+
+    trade_counter = 0
+    consecutive_wins = 0
+    last_report_trade_count = 0
+
+    alert_manager = AlertManagerMulti()
+    analyzer = MarketAnalyzer()
+
+    print("\n🔄 Robô iniciado! Pressione Ctrl+C para parar.\n")
+
+    last_cycle_time = time.time()
+    last_daily_report_time = time.time()
+
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            current_hour = now.hour
+
+            if time.time() - last_cycle_time > 300:
+                print("⚠️ Watchdog: robô parado >5min. A reiniciar ciclo...")
+
+            if check_and_execute_pending_tasks(analyzer):
+                last_cycle_time = time.time()
+                continue
+
+            overlay_active = is_overlay()
+
+            if overlay_active:
+                print(f"⏱️  Modo OVERLAY ativo (polling {POLLING_OVERLAY}s)")
+                while is_overlay():
+                    try:
+                        inner_start = time.time()
+                        alert_manager.check_and_alert()
+
+                        telemetry.reset_cycle()
+
+                        all_signals = []
+
+                        for asset in ASSETS:
+                            if not risk_manager.can_trade():
+                                print("⏸️  Robô pausado. Aguardando reset...")
+                                safe_sleep(30)
+                                break
+
+                            asset_start = time.time()
+                            motivo_rejeicao = None
+
+                            for tf in TIMEFRAMES:
+                                fetcher = DataFetcher(asset=asset, timeframe=tf)
+                                df = fetcher.get_historical_data(count=150)
+                                if df is None or len(df) < 30:
+                                    if motivo_rejeicao is None:
+                                        motivo_rejeicao = "DadosInsuf"
+                                    print(f"⚠️ Dados insuficientes para {asset} ({tf}m). Pulando...")
+                                    continue
+
+                                signal_data = generate_signal(df, tf, asset)
+                                signal = signal_data['signal']
+                                confidence = signal_data.get('confidence', 0)
+                                market_quality = signal_data.get('market_quality', 0)
+
+                                # ===== VERIFICA FILTROS =====
+                                filters_blocked = signal_data.get('filters_blocked', [])
+                                if filters_blocked:
+                                    for fb in filters_blocked:
+                                        if "ADX" in fb and motivo_rejeicao is None:
+                                            motivo_rejeicao = "ADX"
+                                        elif "Bollinger" in fb and motivo_rejeicao is None:
+                                            motivo_rejeicao = "BW"
+                                        elif "Score" in fb and motivo_rejeicao is None:
+                                            motivo_rejeicao = "Score"
+                                        elif "MQ" in fb and motivo_rejeicao is None:
+                                            motivo_rejeicao = "MQ"
+                                    
+                                    motivo = filters_blocked[0] if filters_blocked else "Filtro desconhecido"
+                                    print(f"⛔ {asset} ({tf}m) ignorado. {motivo}")
+                                    
+                                    detalhes = signal_data.get('filters_detailed', {})
+                                    if detalhes:
+                                        for filtro, info in detalhes.items():
+                                            if info['pass']:
+                                                status = "✅ OK"
+                                                simbolo = ">="
+                                            else:
+                                                status = "❌ FAIL"
+                                                simbolo = "<"
+                                            if 'value' in info and 'min' in info:
+                                                print(f"   {filtro}............. {status} ({info['value']:.4f} {simbolo} {info['min']})")
+                                            else:
+                                                print(f"   {filtro}............. {status}")
+                                    continue
+
+                                if market_quality < MARKET_QUALITY_MIN:
+                                    if motivo_rejeicao is None:
+                                        motivo_rejeicao = "MQ"
+                                    print(f"⛔ {asset} ({tf}m) ignorado. Market Quality {market_quality} < {MARKET_QUALITY_MIN}")
+                                    continue
+
+                                print(f"📊 {asset} ({tf}m) - Sinal: {signal} (confiança {confidence:.1f}%)")
+
+                                if signal != "NEUTRO":
+                                    all_signals.append({
+                                        'asset': asset,
+                                        'timeframe': tf,
+                                        'signal_data': signal_data,
+                                        'confidence': confidence,
+                                        'market_quality': market_quality,
+                                        'entry_price': df['close'].iloc[-1],
+                                        'df': df
+                                    })
+
+                            asset_elapsed = time.time() - asset_start
+                            print(f"⏱️ Tempo {asset}: {asset_elapsed:.1f}s")
+                            telemetry.add_tempo_ativo(asset_elapsed)
+
+                            if motivo_rejeicao is not None:
+                                telemetry.add_asset_analysis(asset, motivo_rejeicao)
+                            else:
+                                telemetry.add_asset_analysis(asset, None)
+
+                        if all_signals:
+                            ranked = rank_signals(all_signals)
+                            if ranked:
+                                best = ranked[0]
+                                asset = best["asset"]
+                                tf = best["timeframe"]
+                                signal_data = best["signal_data"]
+                                signal = signal_data["signal"]
+                                confidence = best["confidence"]
+                                market_quality = best["market_quality"]
+                                entry_price = best["entry_price"]
+                                df = best["df"]
+                                score_buy = signal_data["score_buy"]
+                                score_sell = signal_data["score_sell"]
+                                reasons_buy = signal_data["reasons_buy"]
+                                reasons_sell = signal_data["reasons_sell"]
+                                # Executar trade
+                                entry_time = datetime.now(timezone.utc)
+                                mercado = "OTC" if "OTC" in asset else "Normal"
+                                feedback.add_signal(
+                                    asset=asset,
+                                    direction=signal,
+                                    price=entry_price,
+                                    score_buy=score_buy,
+                                    score_sell=score_sell,
+                                    market_quality=market_quality,
+                                    reasons_buy=reasons_buy,
+                                    reasons_sell=reasons_sell,
+                                    timeframe=tf,
+                                    atr=signal_data.get("atr", 0.0),
+                                    bollinger_width=signal_data.get("bollinger_width", 0.0),
+                                    distancia_ema=signal_data.get("distancia_ema", 0.0),
+                                    mercado=mercado,
+                                    trend_direction=signal_data.get("trend_direction", ""),
+                                    close=signal_data.get("close", 0.0),
+                                    ema_fast=signal_data.get("ema_fast", 0.0),
+                                    ema_trend=signal_data.get("ema_trend", 0.0),
+                                    rsi=signal_data.get("rsi", 0.0),
+                                    macd=signal_data.get("macd", 0.0),
+                                    cci=signal_data.get("cci", 0.0),
+                                    volume_ratio=signal_data.get("volume_ratio", 0.0)
+                                )
+                                send_telegram_alert(signal, asset, AMOUNT, tf, confidence, market_quality)
+                                expiry_minutes = CONFIRM_EXPIRY_MAP.get(tf, 2)
+                                print(f"⏳ A confirmar {signal} em {asset} ({tf}m)... ({expiry_minutes} min)")
+                                confirm_result = confirm_signal(asset, signal, entry_price, signal, entry_time, expiry_minutes)
+                                if confirm_result is not None:
+                                    result, current_price = confirm_result
+                                    profit = AMOUNT * 0.80 if result else -AMOUNT
+                                    feedback.confirm_last_signal("WIN" if result else "LOSS")
+
+                                    brain.save(
+                                        asset=asset,
+                                        direction=signal,
+                                        timeframe=tf,
+                                        confidence=confidence,
+                                        market_quality=market_quality,
+                                        result="WIN" if result else "LOSS",
+                                        profit=profit
+                                    )
+                                    risk_manager.record_trade_result(result, profit)
+                                    consecutive_wins = consecutive_wins + 1 if result else 0
+                                    recorder.add_trade(
+                                        asset=asset,
+                                        direction=signal,
+                                        amount=AMOUNT,
+                                        result=result,
+                                        pnl=profit,
+                                        consecutive_wins=consecutive_wins
+                                    )
+                                    trade_counter += 1
+                                    if trade_counter - last_report_trade_count >= 5:
+                                        send_telegram_performance(recorder)
+                                        last_report_trade_count = trade_counter
+                                    print_performance(recorder)
+                                    print(f"💰 P&L dia: ${risk_manager.daily_pnl:.2f}")
+                                    if notifier:
+                                        notifier.send_message(
+                                            f"📊 <b>CONFIRMAÇÃO DE {signal}</b>\n"
+                                            f"📈 {asset} ({tf}m)\n"
+                                            f"📈 Resultado: {'✅ WIN' if result else '❌ LOSS'}\n"
+                                            f"💰 Lucro: ${profit:.2f}\n"
+                                            f"⏰ Preço entrada: {entry_price:.5f} → Saída: {current_price:.5f}"
+                                        )
+                                else:
+                                    print(f"⚠️ Não foi possível confirmar {signal} em {asset} ({tf}m).")
+                                    feedback.confirm_last_signal("LOSS")
+                                    print(f"⚠️ Fallback: {signal} registado como LOSS.")
+                                telemetry.add_executed(asset)
+                            else:
+                                print("🧘 Nenhum sinal válido após ranking.")
+                        else:
+                            print("🧘 Nenhum sinal gerado neste ciclo.")
+                            print("🧘 Nenhum sinal gerado neste ciclo.")
+                            print("🧘 Nenhum sinal gerado neste ciclo.")
+
+                        telemetry.set_tempo_total(time.time() - inner_start)
+                        telemetry.update_daily()
+                        telemetry.print_cycle_summary()
+
+                        if current_hour >= END_OF_DAY_HOUR and (time.time() - last_daily_report_time > 3600):
+                            telemetry.send_daily_report(notifier)
+                            last_daily_report_time = time.time()
+
+                        last_cycle_time = time.time()
+                        if time.time() - inner_start > 60:
+                            print(f"⚠️ Ciclo interno demorou {time.time() - inner_start:.1f}s")
+
+                        print(f"⏳ Dormindo {POLLING_OVERLAY}s durante overlay...")
+                        safe_sleep(POLLING_OVERLAY)
+
+                    except KeyboardInterrupt:
+                        raise
+                    except Exception as e:
+                        print(f"❌ Erro no overlay: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        telemetry.add_erro()
+                        safe_sleep(10)
+
+            else:
+                now = datetime.now(timezone.utc)
+                current_hour = now.hour
+                tasks = []
+                if current_hour < OVERLAY_START:
+                    tasks.append(("overlay", OVERLAY_START, 0))
+                if current_hour < END_OF_DAY_HOUR:
+                    tasks.append(("analise", END_OF_DAY_HOUR, 0))
+                if current_hour >= END_OF_DAY_HOUR:
+                    tasks.append(("overlay", OVERLAY_START, 0))
+                tasks.sort(key=lambda x: x[1])
+                if tasks:
+                    task_name, target_hour, target_minute = tasks[0]
+                    print(f"⏰ Próxima tarefa: {task_name} às {target_hour:02d}:{target_minute:02d} UTC")
+                    if task_name == "analise" and current_hour >= END_OF_DAY_HOUR:
+                        check_and_execute_pending_tasks(analyzer)
+                    else:
+                        sleep_until(target_hour, target_minute)
+                else:
+                    print("⏳ Nenhuma tarefa agendada. Dormindo 30 minutos...")
+                    safe_sleep(POLLING_OFF)
+
+            last_cycle_time = time.time()
+
+        except KeyboardInterrupt:
+            print("\n🛑 Robô interrompido. Relatório final:")
+            print_performance(recorder)
+            send_telegram_performance(recorder)
+            if notifier:
+                notifier.send_message("🛑 Robô encerrado manualmente.")
+            break
+        except Exception as e:
+            print(f"❌ Erro: {e}")
+            import traceback
+            traceback.print_exc()
+            safe_sleep(10)
+
+if __name__ == "__main__":
+    main()
